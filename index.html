@@ -1,0 +1,1573 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>Visor Geométrico de Ángulos AR</title>
+    <!-- Estilos puros autocontenidos (sin dependencias externas) -->
+    <style>
+        :root {
+            --bg-dark: #090d16;
+            --panel-bg: rgba(15, 23, 42, 0.88);
+            --panel-border: rgba(148, 163, 184, 0.25);
+            --text-main: #f8fafc;
+            --text-muted: #94a3b8;
+            --amber: #facc15;
+            --amber-dark: #ca8a04;
+            --blue: #3b82f6;
+            --red: #ef4444;
+            --cyan: #22d3ee;
+            --emerald: #10b981;
+        }
+
+        * {
+            box-sizing: border-box;
+            margin: 0;
+            padding: 0;
+            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+            -webkit-tap-highlight-color: transparent;
+            user-select: none;
+            -webkit-user-select: none;
+        }
+
+        body {
+            background-color: var(--bg-dark);
+            color: var(--text-main);
+            width: 100vw;
+            height: 100dvh;
+            overflow: hidden;
+            display: flex;
+            flex-direction: column;
+        }
+
+        /* Pantalla de Inicio */
+        #start-screen {
+            position: fixed;
+            inset: 0;
+            z-index: 50;
+            background: radial-gradient(circle at top, #1e293b 0%, #090d16 80%);
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: space-between;
+            padding: 1.5rem;
+            overflow-y: auto;
+        }
+
+        .hero {
+            text-align: center;
+            max-width: 420px;
+            margin-top: 1rem;
+        }
+
+        .logo-box {
+            width: 86px;
+            height: 98px;
+            margin: 0 auto 0.85rem;
+            border-radius: 22px;
+            background: rgba(255, 255, 255, 0.96);
+            padding: 6px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            box-shadow: 0 10px 28px rgba(0, 0, 0, 0.45), 0 0 0 2px rgba(56, 189, 248, 0.45);
+        }
+
+        .hero h1 {
+            font-size: 1.65rem;
+            font-weight: 800;
+            letter-spacing: -0.02em;
+            line-height: 1.2;
+        }
+
+        .hero p {
+            color: var(--text-muted);
+            font-size: 0.92rem;
+            margin-top: 0.5rem;
+            line-height: 1.45;
+        }
+
+        .steps-card {
+            width: 100%;
+            max-width: 420px;
+            background: rgba(30, 41, 59, 0.75);
+            border: 1px solid var(--panel-border);
+            border-radius: 20px;
+            padding: 1.25rem;
+            margin: 1rem 0;
+            display: flex;
+            flex-direction: column;
+            gap: 0.85rem;
+        }
+
+        .steps-card h2 {
+            font-size: 0.75rem;
+            text-transform: uppercase;
+            letter-spacing: 0.08em;
+            color: var(--amber);
+        }
+
+        .step-item {
+            display: flex;
+            align-items: flex-start;
+            gap: 0.75rem;
+            font-size: 0.88rem;
+            line-height: 1.4;
+            color: #e2e8f0;
+        }
+
+        .badge-num {
+            flex-shrink: 0;
+            width: 24px;
+            height: 24px;
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-weight: 800;
+            font-size: 0.75rem;
+        }
+
+        .b-amber { background: rgba(250, 204, 21, 0.2); color: var(--amber); border: 1px solid rgba(250, 204, 21, 0.4); }
+        .b-blue { background: rgba(59, 130, 246, 0.2); color: #60a5fa; border: 1px solid rgba(59, 130, 246, 0.4); }
+        .b-cyan { background: rgba(34, 211, 238, 0.2); color: var(--cyan); border: 1px solid rgba(34, 211, 238, 0.4); }
+
+        #error-banner {
+            display: none;
+            width: 100%;
+            max-width: 420px;
+            background: rgba(127, 29, 29, 0.9);
+            border: 1px solid var(--red);
+            color: #fecaca;
+            font-size: 0.82rem;
+            padding: 0.75rem;
+            border-radius: 14px;
+            text-align: center;
+            margin-bottom: 0.75rem;
+        }
+
+        .start-actions {
+            width: 100%;
+            max-width: 420px;
+            display: flex;
+            flex-direction: column;
+            gap: 0.75rem;
+            margin-bottom: 0.5rem;
+        }
+
+        .btn {
+            border: none;
+            border-radius: 16px;
+            font-weight: 700;
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 0.6rem;
+            transition: transform 0.12s ease, opacity 0.15s ease;
+        }
+
+        .btn:active {
+            transform: scale(0.97);
+        }
+
+        .btn-primary {
+            background: var(--amber);
+            color: #090d16;
+            padding: 1rem 1.25rem;
+            font-size: 1rem;
+            box-shadow: 0 8px 20px rgba(250, 204, 21, 0.25);
+        }
+
+        .btn-secondary {
+            background: #1e293b;
+            color: var(--text-main);
+            border: 1px solid var(--panel-border);
+            padding: 0.9rem 1.25rem;
+            font-size: 0.92rem;
+        }
+
+        /* Espacio de Trabajo AR */
+        #ar-workspace {
+            display: none;
+            position: relative;
+            width: 100%;
+            height: 100%;
+            overflow: hidden;
+        }
+
+        #camera-feed {
+            position: absolute;
+            inset: 0;
+            width: 100%;
+            height: 100%;
+            object-fit: cover;
+            z-index: 1;
+        }
+
+        #ar-canvas {
+            position: absolute;
+            inset: 0;
+            width: 100%;
+            height: 100%;
+            z-index: 5;
+            touch-action: none; /* Crítico para arrastrar vértices sin scroll */
+        }
+
+        /* Barra Superior: Guía Paso a Paso */
+        .top-bar {
+            position: absolute;
+            top: 0;
+            left: 0;
+            right: 0;
+            z-index: 10;
+            padding: 0.75rem;
+            background: linear-gradient(to bottom, rgba(9, 13, 22, 0.92) 0%, rgba(9, 13, 22, 0.6) 75%, transparent 100%);
+            display: flex;
+            flex-direction: column;
+            gap: 0.5rem;
+            pointer-events: none;
+        }
+
+        .top-row {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            gap: 0.5rem;
+            pointer-events: auto;
+        }
+
+        .icon-btn {
+            background: var(--panel-bg);
+            border: 1px solid var(--panel-border);
+            color: var(--text-main);
+            border-radius: 12px;
+            padding: 0.55rem 0.75rem;
+            font-size: 0.8rem;
+            font-weight: 700;
+            display: flex;
+            align-items: center;
+            gap: 0.35rem;
+            cursor: pointer;
+            backdrop-filter: blur(8px);
+        }
+
+        .icon-btn:active { transform: scale(0.95); }
+
+        .brand-badge {
+            display: flex;
+            align-items: center;
+            gap: 0.45rem;
+            background: var(--panel-bg);
+            border: 1px solid var(--panel-border);
+            border-radius: 12px;
+            padding: 0.25rem 0.55rem 0.25rem 0.35rem;
+            backdrop-filter: blur(8px);
+        }
+
+        .brand-shield-wrap {
+            width: 26px;
+            height: 30px;
+            background: #ffffff;
+            border-radius: 6px;
+            padding: 1px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            flex-shrink: 0;
+        }
+
+        .brand-title {
+            font-size: 0.72rem;
+            font-weight: 800;
+            color: #f8fafc;
+            line-height: 1.1;
+            letter-spacing: 0.01em;
+        }
+
+        .brand-sub {
+            font-size: 0.6rem;
+            font-weight: 600;
+            color: #38bdf8;
+            display: block;
+        }
+
+        .rafp-watermark {
+            position: fixed;
+            bottom: 4px;
+            right: 8px;
+            z-index: 55;
+            font-size: 9px;
+            font-weight: 600;
+            letter-spacing: 0.08em;
+            color: rgba(148, 163, 184, 0.35);
+            pointer-events: none;
+            user-select: none;
+        }
+
+        .toggle-pill {
+            background: var(--panel-bg);
+            border: 1px solid var(--panel-border);
+            border-radius: 12px;
+            padding: 0.25rem;
+            display: flex;
+            gap: 0.2rem;
+            backdrop-filter: blur(8px);
+        }
+
+        .toggle-opt {
+            border: none;
+            background: transparent;
+            color: var(--text-muted);
+            font-size: 0.72rem;
+            font-weight: 700;
+            padding: 0.35rem 0.6rem;
+            border-radius: 9px;
+            cursor: pointer;
+        }
+
+        .toggle-opt.active {
+            background: var(--amber);
+            color: #090d16;
+        }
+
+        .guide-banner {
+            background: var(--panel-bg);
+            border: 1px solid rgba(250, 204, 21, 0.45);
+            border-radius: 14px;
+            padding: 0.6rem 0.85rem;
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            gap: 0.5rem;
+            backdrop-filter: blur(10px);
+            box-shadow: 0 6px 20px rgba(0,0,0,0.4);
+        }
+
+        .guide-text {
+            font-size: 0.82rem;
+            font-weight: 600;
+            color: #f8fafc;
+            line-height: 1.3;
+        }
+
+        .guide-tag {
+            font-size: 0.68rem;
+            font-weight: 800;
+            text-transform: uppercase;
+            padding: 0.2rem 0.5rem;
+            border-radius: 6px;
+            background: rgba(250, 204, 21, 0.2);
+            color: var(--amber);
+            white-space: nowrap;
+        }
+
+        /* Panel Inferior: Resumen de Ángulos y Controles */
+        .bottom-panel {
+            position: absolute;
+            bottom: 0;
+            left: 0;
+            right: 0;
+            z-index: 10;
+            padding: 0.75rem;
+            background: linear-gradient(to top, rgba(9, 13, 22, 0.96) 0%, rgba(9, 13, 22, 0.82) 80%, transparent 100%);
+            display: flex;
+            flex-direction: column;
+            gap: 0.6rem;
+        }
+
+        /* Slider de Simulación / Horizonte */
+        #sim-control {
+            display: none;
+            background: var(--panel-bg);
+            border: 1px solid rgba(34, 211, 238, 0.35);
+            border-radius: 14px;
+            padding: 0.55rem 0.85rem;
+            backdrop-filter: blur(8px);
+        }
+
+        .sim-header {
+            display: flex;
+            justify-content: space-between;
+            font-size: 0.74rem;
+            font-weight: 700;
+            color: var(--cyan);
+            margin-bottom: 0.3rem;
+        }
+
+        input[type="range"] {
+            width: 100%;
+            accent-color: var(--amber);
+            height: 6px;
+            cursor: pointer;
+        }
+
+        /* Tarjeta de Resumen de los 3 Ángulos */
+        .angles-summary {
+            background: var(--panel-bg);
+            border: 1px solid var(--panel-border);
+            border-radius: 16px;
+            padding: 0.65rem 0.75rem;
+            backdrop-filter: blur(10px);
+        }
+
+        .angles-grid {
+            display: grid;
+            grid-template-columns: repeat(3, 1fr);
+            gap: 0.45rem;
+            text-align: center;
+        }
+
+        .angle-cell {
+            background: rgba(9, 13, 22, 0.65);
+            border-radius: 12px;
+            padding: 0.45rem 0.25rem;
+            border: 1px solid rgba(255,255,255,0.08);
+        }
+
+        .angle-cell.alpha { border-color: rgba(250, 204, 21, 0.4); }
+        .angle-cell.right { border-color: rgba(59, 130, 246, 0.4); }
+        .angle-cell.beta  { border-color: rgba(34, 211, 238, 0.4); }
+
+        .angle-name {
+            font-size: 0.68rem;
+            font-weight: 700;
+            color: var(--text-muted);
+            display: block;
+        }
+
+        .angle-val {
+            font-size: 1.05rem;
+            font-weight: 900;
+            margin-top: 0.1rem;
+            display: block;
+        }
+
+        .alpha .angle-val { color: var(--amber); }
+        .right .angle-val { color: #60a5fa; }
+        .beta .angle-val  { color: var(--cyan); }
+
+        .sum-check {
+            margin-top: 0.45rem;
+            padding-top: 0.4rem;
+            border-top: 1px solid rgba(148, 163, 184, 0.15);
+            text-align: center;
+            font-size: 0.75rem;
+            font-weight: 700;
+            color: #cbd5e1;
+            font-variant-numeric: tabular-nums;
+        }
+
+        /* Botones de Acción Inferiores */
+        .action-bar {
+            display: grid;
+            grid-template-columns: 1fr auto auto;
+            gap: 0.5rem;
+        }
+
+        .btn-crosshair {
+            background: var(--amber);
+            color: #090d16;
+            padding: 0.85rem 0.75rem;
+            font-size: 0.88rem;
+            font-weight: 800;
+            box-shadow: 0 4px 15px rgba(250, 204, 21, 0.25);
+        }
+
+        .btn-crosshair:disabled {
+            background: #334155;
+            color: #94a3b8;
+            box-shadow: none;
+            cursor: default;
+        }
+
+        .btn-reset {
+            background: rgba(239, 68, 68, 0.18);
+            border: 1px solid rgba(239, 68, 68, 0.45);
+            color: #fca5a5;
+            padding: 0.85rem 0.8rem;
+            font-size: 0.8rem;
+        }
+
+        .btn-capture {
+            background: var(--emerald);
+            color: #052e16;
+            padding: 0.85rem 0.85rem;
+            font-size: 0.8rem;
+            font-weight: 800;
+        }
+
+        /* Notificación Toast (sin usar alert()) */
+        #toast {
+            position: fixed;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%) scale(0.9);
+            background: rgba(15, 23, 42, 0.95);
+            border: 1px solid var(--emerald);
+            color: #a7f3d0;
+            padding: 0.75rem 1.25rem;
+            border-radius: 14px;
+            font-size: 0.85rem;
+            font-weight: 700;
+            z-index: 60;
+            opacity: 0;
+            pointer-events: none;
+            transition: all 0.2s ease;
+            text-align: center;
+            box-shadow: 0 10px 30px rgba(0,0,0,0.6);
+        }
+
+        #toast.show {
+            opacity: 1;
+            transform: translate(-50%, -50%) scale(1);
+        }
+    </style>
+</head>
+<body>
+
+    <!-- =====================================================================
+         1. PANTALLA DE INICIO
+    ====================================================================== -->
+    <section id="start-screen">
+        <div class="hero">
+            <div class="logo-box" title="Liceo José Toribio Medina - Río Negro">
+                <!-- Escudo vectorial institucional Liceo JTM - Río Negro -->
+                <svg viewBox="0 0 200 230" width="100%" height="100%" xmlns="http://www.w3.org/2000/svg">
+                    <defs>
+                        <path id="curve-rionegro-start" d="M 38,162 Q 100,206 162,162" fill="none"/>
+                    </defs>
+                    <!-- Fondo y borde doble celeste del escudo -->
+                    <path d="M 100,12 L 182,46 L 182,126 C 182,174 144,202 100,220 C 56,202 18,174 18,126 L 18,46 Z" fill="#ffffff" stroke="#3898ec" stroke-width="4.5"/>
+                    <path d="M 100,18 L 176,50 L 176,125 C 176,169 140,195 100,212 C 60,195 24,169 24,125 L 24,50 Z" fill="none" stroke="#3898ec" stroke-width="1.5"/>
+                    <!-- Texto superior rojo LICEO -->
+                    <text x="100" y="55" text-anchor="middle" fill="#b91c1c" font-family="Arial, Helvetica, sans-serif" font-style="italic" font-weight="800" font-size="18" letter-spacing="2">LICEO</text>
+                    <!-- Letra J (Azul marino oscuro) -->
+                    <path d="M 36,62 L 76,62 L 76,142 C 76,164 62,175 46,175 C 33,175 26,166 26,154 L 26,144 L 44,144 L 44,152 C 44,157 46,159 50,159 C 54,159 56,155 56,145 L 56,78 L 36,78 Z" fill="#10367d"/>
+                    <!-- Letra T central (Azul celeste) -->
+                    <path d="M 79,62 L 121,62 L 121,79 L 109,79 L 109,176 L 100,183 L 91,176 L 91,79 L 79,79 Z" fill="#3898ec"/>
+                    <!-- Letra M (Azul marino oscuro) -->
+                    <path d="M 113,84 L 129,84 L 143,108 L 160,62 L 174,62 L 174,156 L 157,172 L 157,104 L 143,134 L 128,108 L 128,162 L 113,174 Z" fill="#10367d"/>
+                    <!-- Texto curvado Río Negro -->
+                    <text fill="#10367d" font-family="Arial, Helvetica, sans-serif" font-weight="900" font-size="17.5" letter-spacing="0.5">
+                        <textPath href="#curve-rionegro-start" startOffset="50%" text-anchor="middle">Río Negro</textPath>
+                    </text>
+                </svg>
+            </div>
+            <h1>Visor Geométrico de Ángulos AR</h1>
+            <p>Traza triángulos rectángulos sobre objetos reales con la cámara y visualiza sus tres ángulos internos ($\alpha$, $90^\circ$ y $\beta$).</p>
+        </div>
+
+        <div class="steps-card">
+            <h2>Trazado Ortogonal en 3 Pasos</h2>
+            <div class="step-item">
+                <span class="badge-num b-amber">A</span>
+                <div><strong>Vértice A (Observador):</strong> Toca la pantalla o usa la mira para fijar el vértice del ángulo de elevación <strong>$\alpha$</strong>.</div>
+            </div>
+            <div class="step-item">
+                <span class="badge-num b-blue">B</span>
+                <div><strong>Vértice B (Base / $90^\circ$):</strong> Marca la base del objeto para proyectar el cateto adyacente y el ángulo recto.</div>
+            </div>
+            <div class="step-item">
+                <span class="badge-num b-cyan">C</span>
+                <div><strong>Vértice C (Cima / $\beta$):</strong> Marca la altura del objeto manteniendo ortogonalidad estricta y arrastra cualquier vértice para afinar.</div>
+            </div>
+        </div>
+
+        <div id="error-banner"></div>
+
+        <div class="start-actions">
+            <button id="btn-start-ar" class="btn btn-primary">
+                <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+                    <path d="M23 19a2 2 0 0 1-2 2H3a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h4l2-3h6l2 3h4a2 2 0 0 1 2 2z"/>
+                    <circle cx="12" cy="13" r="4"/>
+                </svg>
+                Iniciar Cámara y Sensores
+            </button>
+            <button id="btn-start-sim" class="btn btn-secondary">
+                <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#22d3ee" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">
+                    <rect x="2" y="3" width="20" height="14" rx="2" ry="2"/>
+                    <line x1="8" y1="21" x2="16" y2="21"/>
+                    <line x1="12" y1="17" x2="12" y2="21"/>
+                </svg>
+                Modo Simulación / Escritorio
+            </button>
+        </div>
+    </section>
+
+    <!-- =====================================================================
+         2. ESPACIO DE TRABAJO AR / SIMULACIÓN
+    ====================================================================== -->
+    <main id="ar-workspace">
+        <!-- Video en vivo (Cámara trasera) -->
+        <video id="camera-feed" autoplay playsinline muted></video>
+
+        <!-- Lienzo interactivo para dibujo del triángulo y toque de vértices -->
+        <canvas id="ar-canvas"></canvas>
+
+        <!-- Barra Superior: Controles y Guía Paso a Paso -->
+        <header class="top-bar">
+            <div class="top-row">
+                <button id="btn-back" class="icon-btn" title="Volver al inicio">
+                    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M15 18l-6-6 6-6"/></svg>
+                    Inicio
+                </button>
+
+                <!-- Logo Institucional Liceo JTM en el encabezado del visor -->
+                <div class="brand-badge" title="Liceo José Toribio Medina - Río Negro">
+                    <div class="brand-shield-wrap">
+                        <svg viewBox="0 0 200 230" width="100%" height="100%" xmlns="http://www.w3.org/2000/svg">
+                            <defs>
+                                <path id="curve-rionegro-nav" d="M 38,162 Q 100,206 162,162" fill="none"/>
+                            </defs>
+                            <path d="M 100,12 L 182,46 L 182,126 C 182,174 144,202 100,220 C 56,202 18,174 18,126 L 18,46 Z" fill="#ffffff" stroke="#3898ec" stroke-width="5"/>
+                            <text x="100" y="55" text-anchor="middle" fill="#b91c1c" font-family="Arial, Helvetica, sans-serif" font-style="italic" font-weight="800" font-size="18" letter-spacing="2">LICEO</text>
+                            <path d="M 36,62 L 76,62 L 76,142 C 76,164 62,175 46,175 C 33,175 26,166 26,154 L 26,144 L 44,144 L 44,152 C 44,157 46,159 50,159 C 54,159 56,155 56,145 L 56,78 L 36,78 Z" fill="#10367d"/>
+                            <path d="M 79,62 L 121,62 L 121,79 L 109,79 L 109,176 L 100,183 L 91,176 L 91,79 L 79,79 Z" fill="#3898ec"/>
+                            <path d="M 113,84 L 129,84 L 143,108 L 160,62 L 174,62 L 174,156 L 157,172 L 157,104 L 143,134 L 128,108 L 128,162 L 113,174 Z" fill="#10367d"/>
+                            <text fill="#10367d" font-family="Arial, Helvetica, sans-serif" font-weight="900" font-size="17.5">
+                                <textPath href="#curve-rionegro-nav" startOffset="50%" text-anchor="middle">Río Negro</textPath>
+                            </text>
+                        </svg>
+                    </div>
+                    <div>
+                        <span class="brand-title">Liceo JTM</span>
+                        <span class="brand-sub">Visor AR</span>
+                    </div>
+                </div>
+
+                <!-- Selector de modo de referencia de base -->
+                <div class="toggle-pill" title="Alineación del cateto base AB">
+                    <button id="mode-touch" class="toggle-opt active">Libre</button>
+                    <button id="mode-sensor" class="toggle-opt">Horizonte</button>
+                </div>
+            </div>
+
+            <div class="guide-banner">
+                <span id="guide-message" class="guide-text">Toca la pantalla o usa la mira para fijar el <strong>Vértice A</strong> (Observador).</span>
+                <span id="guide-step-tag" class="guide-tag">Paso 1 de 3</span>
+            </div>
+        </header>
+
+        <!-- Panel Inferior: Resumen de Ángulos y Botones -->
+        <footer class="bottom-panel">
+            <!-- Control de inclinación en Modo Simulación o Sensor -->
+            <div id="sim-control">
+                <div class="sim-header">
+                    <span>Inclinación / Horizonte simulado:</span>
+                    <span id="sim-angle-readout">0.0°</span>
+                </div>
+                <input type="range" id="sim-slider" min="-30" max="45" step="0.5" value="0">
+            </div>
+
+            <!-- Resumen Matemático Exclusivo de Ángulos -->
+            <div class="angles-summary">
+                <div class="angles-grid">
+                    <div class="angle-cell alpha">
+                        <span class="angle-name">Ángulo α (A)</span>
+                        <span id="val-alpha" class="angle-val">--°</span>
+                    </div>
+                    <div class="angle-cell right">
+                        <span class="angle-name">Ángulo Recto (B)</span>
+                        <span id="val-right" class="angle-val">90.0°</span>
+                    </div>
+                    <div class="angle-cell beta">
+                        <span class="angle-name">Ángulo β (C)</span>
+                        <span id="val-beta" class="angle-val">--°</span>
+                    </div>
+                </div>
+                <div id="sum-verification" class="sum-check">
+                    Traza los 3 vértices para verificar α + β + 90° = 180°
+                </div>
+            </div>
+
+            <!-- Barra de Acción Táctil -->
+            <div class="action-bar">
+                <button id="btn-place-center" class="btn btn-crosshair">
+                    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5">
+                        <circle cx="12" cy="12" r="9"/><line x1="12" y1="2" x2="12" y2="6"/><line x1="12" y1="18" x2="12" y2="22"/><line x1="2" y1="12" x2="6" y2="12"/><line x1="18" y1="12" x2="22" y2="12"/>
+                    </svg>
+                    <span id="btn-place-label">Fijar Vértice A</span>
+                </button>
+
+                <button id="btn-reset" class="btn btn-reset" title="Reiniciar Puntos">
+                    <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M3 12a9 9 0 1 0 9-9 9.75 9.75 0 0 0-6.74 2.74L3 8"/><path d="M3 3v5h5"/></svg>
+                    Reiniciar
+                </button>
+
+                <button id="btn-capture" class="btn btn-capture" title="Descargar imagen PNG">
+                    <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
+                    Evidencia
+                </button>
+            </div>
+        </footer>
+    </main>
+
+    <!-- Notificación visual flotante -->
+    <div id="toast">Evidencia PNG descargada</div>
+
+    <!-- Marca de autoría sutil -->
+    <div class="rafp-watermark" aria-hidden="true">RAFP</div>
+
+    <!-- =====================================================================
+         3. LÓGICA JAVASCRIPT (GEOMETRÍA ORTOGONAL, SENSORES Y CANVAS)
+    ====================================================================== -->
+    <script>
+        // --- ESTADO DE LA APLICACIÓN ---
+        const state = {
+            active: false,
+            isSimulation: false,
+            horizonAlign: false,  // false = Geometría libre en pantalla, true = Alineado al horizonte/sensor
+            sensorRollDeg: 0,     // Inclinación lateral/horizonte del dispositivo en grados
+            sensorPitchDeg: 0,    // Inclinación de elevación del dispositivo en grados
+            stream: null,
+
+            // Vértices del triángulo rectángulo en coordenadas de pantalla (píxeles)
+            // A = Observador (α), B = Base ortogonal (90°), C = Cima (β)
+            A: null,
+            B: null,
+            C: null,
+
+            // Control de arrastre táctil / mouse
+            draggingVertex: null, // 'A', 'B' o 'C'
+            pointerPos: { x: 0, y: 0 },
+
+            // Ángulos calculados
+            alphaDeg: 0,
+            betaDeg: 0
+        };
+
+        // --- ELEMENTOS DEL DOM ---
+        const startScreen = document.getElementById('start-screen');
+        const arWorkspace = document.getElementById('ar-workspace');
+        const videoEl = document.getElementById('camera-feed');
+        const canvas = document.getElementById('ar-canvas');
+        const ctx = canvas.getContext('2d');
+        const errorBanner = document.getElementById('error-banner');
+        const toastEl = document.getElementById('toast');
+
+        const btnStartAR = document.getElementById('btn-start-ar');
+        const btnStartSim = document.getElementById('btn-start-sim');
+        const btnBack = document.getElementById('btn-back');
+        const btnModeTouch = document.getElementById('mode-touch');
+        const btnModeSensor = document.getElementById('mode-sensor');
+        const btnPlaceCenter = document.getElementById('btn-place-center');
+        const btnPlaceLabel = document.getElementById('btn-place-label');
+        const btnReset = document.getElementById('btn-reset');
+        const btnCapture = document.getElementById('btn-capture');
+
+        const guideMessage = document.getElementById('guide-message');
+        const guideStepTag = document.getElementById('guide-step-tag');
+        const simControl = document.getElementById('sim-control');
+        const simSlider = document.getElementById('sim-slider');
+        const simAngleReadout = document.getElementById('sim-angle-readout');
+
+        const valAlpha = document.getElementById('val-alpha');
+        const valBeta = document.getElementById('val-beta');
+        const sumVerification = document.getElementById('sum-verification');
+
+        // --- 1. INICIO DE CÁMARA Y SENSORES ---
+        async function initARMode() {
+            errorBanner.style.display = 'none';
+            try {
+                // Permiso explícito para iOS 13+ Safari
+                if (typeof DeviceOrientationEvent !== 'undefined' && typeof DeviceOrientationEvent.requestPermission === 'function') {
+                    const res = await DeviceOrientationEvent.requestPermission();
+                    if (res !== 'granted') {
+                        throw new Error('Permiso de sensores denegado en Safari. Usa el Modo Simulación o habilita el acceso.');
+                    }
+                }
+
+                if (!navigator.mediaDevices || !navigator.mediaDevices.getUserMedia) {
+                    throw new Error('El navegador requiere HTTPS o no soporta acceso a cámara.');
+                }
+
+                state.stream = await navigator.mediaDevices.getUserMedia({
+                    video: {
+                        facingMode: { ideal: 'environment' },
+                        width: { ideal: 1280 },
+                        height: { ideal: 720 }
+                    },
+                    audio: false
+                });
+
+                videoEl.srcObject = state.stream;
+                await videoEl.play();
+
+                state.isSimulation = false;
+                videoEl.style.display = 'block';
+                simControl.style.display = 'none';
+
+                window.addEventListener('deviceorientation', handleOrientation);
+                enterWorkspace();
+            } catch (err) {
+                errorBanner.textContent = `⚠️ ${err.message || 'No se pudo iniciar la cámara.'} Puedes probar el Modo Simulación / Escritorio.`;
+                errorBanner.style.display = 'block';
+            }
+        }
+
+        function initSimulationMode() {
+            errorBanner.style.display = 'none';
+            state.isSimulation = true;
+            videoEl.style.display = 'none';
+            simControl.style.display = 'block';
+            state.sensorRollDeg = parseFloat(simSlider.value);
+            enterWorkspace();
+        }
+
+        function enterWorkspace() {
+            state.active = true;
+            resetVertices();
+            startScreen.style.display = 'none';
+            arWorkspace.style.display = 'block';
+            resizeCanvas();
+            requestAnimationFrame(drawLoop);
+        }
+
+        function exitWorkspace() {
+            state.active = false;
+            window.removeEventListener('deviceorientation', handleOrientation);
+            if (state.stream) {
+                state.stream.getTracks().forEach(t => t.stop());
+                state.stream = null;
+            }
+            arWorkspace.style.display = 'none';
+            startScreen.style.display = 'flex';
+        }
+
+        // --- 2. SENSORES DE ORIENTACIÓN ---
+        function handleOrientation(e) {
+            if (state.isSimulation) return;
+            // gamma: inclinación izquierda/derecha (-90 a 90) -> ángulo del horizonte en pantalla vertical
+            // beta: inclinación adelante/atrás -> elevación
+            if (e.gamma !== null) {
+                const clampedGamma = Math.max(-45, Math.min(45, e.gamma));
+                state.sensorRollDeg = state.sensorRollDeg * 0.8 + clampedGamma * 0.2;
+            }
+            if (e.beta !== null) {
+                const elev = Math.max(0, Math.min(85, e.beta - 90));
+                state.sensorPitchDeg = state.sensorPitchDeg * 0.8 + elev * 0.2;
+            }
+        }
+
+        // --- 3. GEOMETRÍA ORTOGONAL RIGUROSA (TRIÁNGULO RECTÁNGULO) ---
+        function getBaseAngleRad() {
+            // Si "Base Horizonte" está activo, el cateto AB sigue la inclinación del sensor/simulación
+            // Si "Geometría Libre" está activo, el cateto AB es horizontal respecto a la pantalla (0 rad)
+            if (state.horizonAlign) {
+                return (state.sensorRollDeg * Math.PI) / 180;
+            }
+            return 0;
+        }
+
+        /**
+         * Proyecta el punto crudo P sobre la recta que pasa por A con dirección angleRad
+         * para garantizar que B sea la proyección ortogonal exacta.
+         */
+        function projectOntoBase(A, rawB) {
+            const theta = getBaseAngleRad();
+            const ux = Math.cos(theta);
+            const uy = Math.sin(theta);
+            const vx = rawB.x - A.x;
+            const vy = rawB.y - A.y;
+            let dot = vx * ux + vy * uy;
+            // Evitar longitud nula
+            if (Math.abs(dot) < 25) dot = dot >= 0 ? 25 : -25;
+            return {
+                x: A.x + dot * ux,
+                y: A.y + dot * uy
+            };
+        }
+
+        /**
+         * Proyecta el punto crudo rawC sobre la recta perpendicular a AB que pasa por B.
+         * Esto asegura matemáticamente que el ángulo en B sea SIEMPRE 90.0° exactos.
+         */
+        function projectPerpendicularFromB(A, B, rawC) {
+            const dx = B.x - A.x;
+            const dy = B.y - A.y;
+            const len = Math.hypot(dx, dy) || 1;
+            // Vector unitario perpendicular a AB (rotado 90° antihorario)
+            const nx = -dy / len;
+            const ny = dx / len;
+
+            const vx = rawC.x - B.x;
+            const vy = rawC.y - B.y;
+            let proj = vx * nx + vy * ny;
+            // Evitar altura nula
+            if (Math.abs(proj) < 25) proj = proj >= 0 ? 25 : -25;
+
+            return {
+                x: B.x + proj * nx,
+                y: B.y + proj * ny
+            };
+        }
+
+        function placeNextVertex(pt) {
+            if (!state.A) {
+                state.A = { x: pt.x, y: pt.y };
+            } else if (!state.B) {
+                state.B = projectOntoBase(state.A, pt);
+            } else if (!state.C) {
+                state.C = projectPerpendicularFromB(state.A, state.B, pt);
+            }
+            updateGuidanceUI();
+        }
+
+        function resetVertices() {
+            state.A = null;
+            state.B = null;
+            state.C = null;
+            state.draggingVertex = null;
+            updateGuidanceUI();
+        }
+
+        function updateGuidanceUI() {
+            if (!state.A) {
+                guideMessage.innerHTML = 'Toca la pantalla o usa la mira para fijar el <strong>Vértice A</strong> (Observador).';
+                guideStepTag.textContent = 'Paso 1 de 3';
+                btnPlaceLabel.textContent = 'Fijar Vértice A';
+                btnPlaceCenter.disabled = false;
+            } else if (!state.B) {
+                guideMessage.innerHTML = 'Marca el <strong>Vértice B</strong> (Base del objeto / Ángulo recto de 90°).';
+                guideStepTag.textContent = 'Paso 2 de 3';
+                btnPlaceLabel.textContent = 'Fijar Vértice B (90°)';
+                btnPlaceCenter.disabled = false;
+            } else if (!state.C) {
+                guideMessage.innerHTML = 'Marca el <strong>Vértice C</strong> (Cima del objeto) para cerrar el triángulo.';
+                guideStepTag.textContent = 'Paso 3 de 3';
+                btnPlaceLabel.textContent = 'Fijar Vértice C';
+                btnPlaceCenter.disabled = false;
+            } else {
+                guideMessage.innerHTML = '<strong>Triángulo completo.</strong> Arrastra cualquier vértice (A, B o C) para ajustar.';
+                guideStepTag.textContent = 'Completado';
+                btnPlaceLabel.textContent = 'Vértices Fijados';
+                btnPlaceCenter.disabled = true;
+            }
+        }
+
+        // --- 4. INTERACCIÓN TÁCTIL Y MOUSE (POINTER EVENTS) ---
+        function getCanvasCoords(e) {
+            const rect = canvas.getBoundingClientRect();
+            return {
+                x: e.clientX - rect.left,
+                y: e.clientY - rect.top
+            };
+        }
+
+        function findHitVertex(pt) {
+            const hitRadius = 32; // Radio amplio para dedos en pantalla táctil
+            const vertices = [
+                { key: 'C', pos: state.C },
+                { key: 'B', pos: state.B },
+                { key: 'A', pos: state.A }
+            ];
+            for (const v of vertices) {
+                if (v.pos && Math.hypot(pt.x - v.pos.x, pt.y - v.pos.y) <= hitRadius) {
+                    return v.key;
+                }
+            }
+            return null;
+        }
+
+        canvas.addEventListener('pointerdown', (e) => {
+            const pt = getCanvasCoords(e);
+            state.pointerPos = pt;
+
+            // 1. Verificar si el usuario tocó un vértice existente para arrastrarlo
+            const hit = findHitVertex(pt);
+            if (hit) {
+                state.draggingVertex = hit;
+                canvas.setPointerCapture(e.pointerId);
+                return;
+            }
+
+            // 2. Si faltan vértices por colocar, colocar el siguiente en el punto tocado
+            if (!state.A || !state.B || !state.C) {
+                placeNextVertex(pt);
+            }
+        });
+
+        canvas.addEventListener('pointermove', (e) => {
+            const pt = getCanvasCoords(e);
+            state.pointerPos = pt;
+
+            if (!state.draggingVertex) return;
+
+            if (state.draggingVertex === 'A' && state.A) {
+                // Al mover A, trasladamos A y recalculamos B y C preservando el triángulo rectángulo
+                const dx = pt.x - state.A.x;
+                const dy = pt.y - state.A.y;
+                state.A = { x: pt.x, y: pt.y };
+                if (state.B) {
+                    state.B = projectOntoBase(state.A, { x: state.B.x + dx, y: state.B.y + dy });
+                }
+                if (state.B && state.C) {
+                    state.C = projectPerpendicularFromB(state.A, state.B, { x: state.C.x + dx, y: state.C.y + dy });
+                }
+            } else if (state.draggingVertex === 'B' && state.A && state.B) {
+                // Al mover B, ajustamos la base AB y mantenemos C perpendicular a B
+                const oldC = state.C ? { ...state.C } : null;
+                state.B = projectOntoBase(state.A, pt);
+                if (oldC) {
+                    state.C = projectPerpendicularFromB(state.A, state.B, oldC);
+                }
+            } else if (state.draggingVertex === 'C' && state.A && state.B && state.C) {
+                // Al mover C, se desliza estrictamente sobre la perpendicular a AB por B
+                state.C = projectPerpendicularFromB(state.A, state.B, pt);
+            }
+        });
+
+        canvas.addEventListener('pointerup', (e) => {
+            if (state.draggingVertex) {
+                state.draggingVertex = null;
+                canvas.releasePointerCapture(e.pointerId);
+            }
+        });
+
+        // --- 5. CÁLCULO EXCLUSIVO DE LOS 3 ÁNGULOS INTERNOS ---
+        function computeAngles() {
+            if (!state.A || !state.B || !state.C) {
+                valAlpha.textContent = '--°';
+                valBeta.textContent = '--°';
+                sumVerification.textContent = 'Traza los 3 vértices para verificar α + β + 90° = 180°';
+                return;
+            }
+
+            // Longitudes de catetos en píxeles
+            const lenAB = Math.hypot(state.B.x - state.A.x, state.B.y - state.A.y);
+            const lenBC = Math.hypot(state.C.x - state.B.x, state.C.y - state.B.y);
+
+            // Cálculo trigonométrico puro mediante atan2(|BC|, |AB|)
+            const alphaRad = Math.atan2(lenBC, lenAB);
+            const alphaDeg = (alphaRad * 180) / Math.PI;
+            const betaDeg = 90 - alphaDeg;
+
+            state.alphaDeg = alphaDeg;
+            state.betaDeg = betaDeg;
+
+            valAlpha.textContent = `${alphaDeg.toFixed(1)}°`;
+            valBeta.textContent = `${betaDeg.toFixed(1)}°`;
+            sumVerification.textContent = `${alphaDeg.toFixed(1)}° + ${betaDeg.toFixed(1)}° + 90.0° = 180.0°`;
+        }
+
+        // --- 6. DIBUJO EN CANVAS (SIMULACIÓN + TRIÁNGULO + ARCOS + ETIQUETAS) ---
+        function resizeCanvas() {
+            canvas.width = window.innerWidth;
+            canvas.height = window.innerHeight;
+        }
+        window.addEventListener('resize', resizeCanvas);
+
+        function drawSimulationBackground(targetCtx, w, h) {
+            // Fondo degradado tipo cielo/campo
+            const grad = targetCtx.createLinearGradient(0, 0, 0, h);
+            grad.addColorStop(0, '#0f172a');
+            grad.addColorStop(0.65, '#1e3a5f');
+            grad.addColorStop(1, '#14532d');
+            targetCtx.fillStyle = grad;
+            targetCtx.fillRect(0, 0, w, h);
+
+            // Cuadrícula geométrica sutil
+            targetCtx.strokeStyle = 'rgba(255, 255, 255, 0.07)';
+            targetCtx.lineWidth = 1;
+            const step = 36;
+            for (let x = 0; x < w; x += step) {
+                targetCtx.beginPath();
+                targetCtx.moveTo(x, 0);
+                targetCtx.lineTo(x, h);
+                targetCtx.stroke();
+            }
+            for (let y = 0; y < h; y += step) {
+                targetCtx.beginPath();
+                targetCtx.moveTo(0, y);
+                targetCtx.lineTo(w, y);
+                targetCtx.stroke();
+            }
+
+            // Línea de horizonte inclinada según sensorRollDeg
+            targetCtx.save();
+            targetCtx.translate(w / 2, h * 0.68);
+            targetCtx.rotate(getBaseAngleRad());
+            targetCtx.strokeStyle = 'rgba(34, 211, 238, 0.35)';
+            targetCtx.setLineDash([6, 6]);
+            targetCtx.beginPath();
+            targetCtx.moveTo(-w, 0);
+            targetCtx.lineTo(w, 0);
+            targetCtx.stroke();
+            targetCtx.restore();
+
+            // Silueta de árbol de referencia en el lado derecho
+            const treeX = w * 0.74;
+            const groundY = h * 0.68;
+            // Sombra
+            targetCtx.fillStyle = 'rgba(0, 0, 0, 0.35)';
+            targetCtx.beginPath();
+            targetCtx.ellipse(treeX, groundY, 44, 7, 0, 0, Math.PI * 2);
+            targetCtx.fill();
+            // Tronco
+            targetCtx.fillStyle = '#5c3a21';
+            targetCtx.fillRect(treeX - 8, groundY - 95, 16, 95);
+            // Copa
+            targetCtx.fillStyle = '#15803d';
+            targetCtx.beginPath();
+            targetCtx.arc(treeX, groundY - 125, 46, 0, Math.PI * 2);
+            targetCtx.arc(treeX - 28, groundY - 108, 32, 0, Math.PI * 2);
+            targetCtx.arc(treeX + 28, groundY - 108, 32, 0, Math.PI * 2);
+            targetCtx.fill();
+            targetCtx.fillStyle = '#22c55e';
+            targetCtx.beginPath();
+            targetCtx.arc(treeX - 8, groundY - 142, 30, 0, Math.PI * 2);
+            targetCtx.fill();
+        }
+
+        function drawGeometryScene(targetCtx, w, h, includeCrosshair = true) {
+            const { A, B, C } = state;
+
+            // Si estamos en modo simulación, dibujamos el fondo ilustrado en el canvas
+            if (state.isSimulation) {
+                drawSimulationBackground(targetCtx, w, h);
+            } else {
+                targetCtx.clearRect(0, 0, w, h);
+            }
+
+            // Dibujar mira central si aún faltan vértices por colocar
+            if (includeCrosshair && (!A || !B || !C)) {
+                drawCrosshair(targetCtx, w / 2, h / 2);
+            }
+
+            // Vista previa dinámica mientras se coloca el segundo o tercer punto
+            if (A && !B) {
+                const previewB = projectOntoBase(A, { x: w / 2, y: h / 2 });
+                drawDashedGuide(targetCtx, A, previewB, 'rgba(59, 130, 246, 0.7)');
+            } else if (A && B && !C) {
+                const previewC = projectPerpendicularFromB(A, B, { x: w / 2, y: h / 2 });
+                drawDashedGuide(targetCtx, B, previewC, 'rgba(239, 68, 68, 0.7)');
+                drawDashedGuide(targetCtx, A, previewC, 'rgba(248, 250, 252, 0.5)');
+            }
+
+            // Si tenemos A, B y C: dibujar el triángulo rectángulo completo
+            if (A && B && C) {
+                // 1. Relleno translúcido del triángulo
+                targetCtx.beginPath();
+                targetCtx.moveTo(A.x, A.y);
+                targetCtx.lineTo(B.x, B.y);
+                targetCtx.lineTo(C.x, C.y);
+                targetCtx.closePath();
+                targetCtx.fillStyle = 'rgba(250, 204, 21, 0.14)';
+                targetCtx.fill();
+
+                // 2. Símbolo clásico de ángulo recto (90°) en B rotado según segmento AB
+                drawRightAngleSquare(targetCtx, A, B, C);
+
+                // 3. Arcos interiores de los ángulos α (en A) y β (en C)
+                drawInteriorAngleArc(targetCtx, A, B, C, 44, 'rgba(250, 204, 21, 0.45)', '#facc15');
+                drawInteriorAngleArc(targetCtx, C, B, A, 40, 'rgba(34, 211, 238, 0.4)', '#22d3ee');
+
+                // 4. Cateto Adyacente / Base (A - B) en Azul Brillante (#3b82f6)
+                targetCtx.beginPath();
+                targetCtx.moveTo(A.x, A.y);
+                targetCtx.lineTo(B.x, B.y);
+                targetCtx.strokeStyle = '#3b82f6';
+                targetCtx.lineWidth = 5;
+                targetCtx.lineCap = 'round';
+                targetCtx.stroke();
+
+                // 5. Cateto Opuesto / Altura (B - C) en Rojo Intenso (#ef4444)
+                targetCtx.beginPath();
+                targetCtx.moveTo(B.x, B.y);
+                targetCtx.lineTo(C.x, C.y);
+                targetCtx.strokeStyle = '#ef4444';
+                targetCtx.lineWidth = 5;
+                targetCtx.lineCap = 'round';
+                targetCtx.stroke();
+
+                // 6. Hipotenusa (A - C) en Blanco Punteado
+                targetCtx.beginPath();
+                targetCtx.moveTo(A.x, A.y);
+                targetCtx.lineTo(C.x, C.y);
+                targetCtx.strokeStyle = '#f8fafc';
+                targetCtx.lineWidth = 3.5;
+                targetCtx.setLineDash([8, 6]);
+                targetCtx.stroke();
+                targetCtx.setLineDash([]);
+
+                // 7. Etiquetas flotantes con los valores de los 3 ángulos
+                const centroid = {
+                    x: (A.x + B.x + C.x) / 3,
+                    y: (A.y + B.y + C.y) / 3
+                };
+
+                // Posicionar etiqueta α cerca de A hacia el interior del triángulo
+                const posAlpha = lerpPoint(A, centroid, 0.28);
+                drawAngleBadge(targetCtx, `α = ${state.alphaDeg.toFixed(1)}°`, posAlpha.x, posAlpha.y - 16, '#facc15', '#090d16');
+
+                // Posicionar etiqueta 90° cerca de B
+                const posRight = lerpPoint(B, centroid, 0.24);
+                drawAngleBadge(targetCtx, '90°', posRight.x, posRight.y, '#3b82f6', '#ffffff');
+
+                // Posicionar etiqueta β cerca de C hacia el interior del triángulo
+                const posBeta = lerpPoint(C, centroid, 0.28);
+                drawAngleBadge(targetCtx, `β = ${state.betaDeg.toFixed(1)}°`, posBeta.x, posBeta.y + 14, '#22d3ee', '#090d16');
+            } else if (A && B) {
+                // Solo segmento A-B trazado
+                targetCtx.beginPath();
+                targetCtx.moveTo(A.x, A.y);
+                targetCtx.lineTo(B.x, B.y);
+                targetCtx.strokeStyle = '#3b82f6';
+                targetCtx.lineWidth = 5;
+                targetCtx.lineCap = 'round';
+                targetCtx.stroke();
+            }
+
+            // Dibujar los vértices colocados (A, B, C) con asas táctiles visibles
+            if (A) drawVertexHandle(targetCtx, A, 'A', '#facc15');
+            if (B) drawVertexHandle(targetCtx, B, 'B', '#3b82f6');
+            if (C) drawVertexHandle(targetCtx, C, 'C', '#22d3ee');
+        }
+
+        function drawLoop() {
+            if (!state.active) return;
+
+            // Si "Base Horizonte" está activo y ya hay puntos, mantener B y C alineados con el sensor
+            if (state.horizonAlign && state.A && state.B && !state.draggingVertex) {
+                const oldC = state.C ? { ...state.C } : null;
+                state.B = projectOntoBase(state.A, state.B);
+                if (oldC) {
+                    state.C = projectPerpendicularFromB(state.A, state.B, oldC);
+                }
+            }
+
+            computeAngles();
+            drawGeometryScene(ctx, canvas.width, canvas.height, true);
+            requestAnimationFrame(drawLoop);
+        }
+
+        // --- FUNCIONES AUXILIARES DE DIBUJO ---
+        function drawCrosshair(targetCtx, x, y) {
+            targetCtx.save();
+            targetCtx.strokeStyle = 'rgba(255, 255, 255, 0.85)';
+            targetCtx.lineWidth = 2;
+            targetCtx.beginPath();
+            targetCtx.arc(x, y, 20, 0, Math.PI * 2);
+            targetCtx.stroke();
+
+            targetCtx.beginPath();
+            targetCtx.moveTo(x - 28, y); targetCtx.lineTo(x - 8, y);
+            targetCtx.moveTo(x + 8, y);  targetCtx.lineTo(x + 28, y);
+            targetCtx.moveTo(x, y - 28); targetCtx.lineTo(x, y - 8);
+            targetCtx.moveTo(x, y + 8);  targetCtx.lineTo(x, y + 28);
+            targetCtx.stroke();
+
+            targetCtx.fillStyle = '#facc15';
+            targetCtx.beginPath();
+            targetCtx.arc(x, y, 3.5, 0, Math.PI * 2);
+            targetCtx.fill();
+            targetCtx.restore();
+        }
+
+        function drawDashedGuide(targetCtx, p1, p2, color) {
+            targetCtx.save();
+            targetCtx.strokeStyle = color;
+            targetCtx.lineWidth = 3;
+            targetCtx.setLineDash([6, 6]);
+            targetCtx.beginPath();
+            targetCtx.moveTo(p1.x, p1.y);
+            targetCtx.lineTo(p2.x, p2.y);
+            targetCtx.stroke();
+            targetCtx.restore();
+        }
+
+        function drawRightAngleSquare(targetCtx, A, B, C) {
+            const size = 20;
+            // Vectores unitarios desde B hacia A y desde B hacia C
+            const lenBA = Math.hypot(A.x - B.x, A.y - B.y) || 1;
+            const lenBC = Math.hypot(C.x - B.x, C.y - B.y) || 1;
+            const uBA = { x: ((A.x - B.x) / lenBA) * size, y: ((A.y - B.y) / lenBA) * size };
+            const uBC = { x: ((C.x - B.x) / lenBC) * size, y: ((C.y - B.y) / lenBC) * size };
+
+            const p1 = { x: B.x + uBA.x, y: B.y + uBA.y };
+            const p2 = { x: B.x + uBA.x + uBC.x, y: B.y + uBA.y + uBC.y };
+            const p3 = { x: B.x + uBC.x, y: B.y + uBC.y };
+
+            targetCtx.save();
+            targetCtx.beginPath();
+            targetCtx.moveTo(p1.x, p1.y);
+            targetCtx.lineTo(p2.x, p2.y);
+            targetCtx.lineTo(p3.x, p3.y);
+            targetCtx.strokeStyle = '#ffffff';
+            targetCtx.lineWidth = 2.5;
+            targetCtx.stroke();
+            targetCtx.restore();
+        }
+
+        function drawInteriorAngleArc(targetCtx, vertex, p1, p2, radius, fillColor, strokeColor) {
+            const ang1 = Math.atan2(p1.y - vertex.y, p1.x - vertex.x);
+            const ang2 = Math.atan2(p2.y - vertex.y, p2.x - vertex.x);
+
+            // Determinar el arco más corto entre ang1 y ang2
+            let diff = ang2 - ang1;
+            while (diff <= -Math.PI) diff += Math.PI * 2;
+            while (diff > Math.PI) diff -= Math.PI * 2;
+            const anticlockwise = diff < 0;
+
+            targetCtx.save();
+            targetCtx.beginPath();
+            targetCtx.moveTo(vertex.x, vertex.y);
+            targetCtx.arc(vertex.x, vertex.y, radius, ang1, ang2, anticlockwise);
+            targetCtx.closePath();
+            targetCtx.fillStyle = fillColor;
+            targetCtx.fill();
+            targetCtx.strokeStyle = strokeColor;
+            targetCtx.lineWidth = 2.5;
+            targetCtx.stroke();
+            targetCtx.restore();
+        }
+
+        function drawVertexHandle(targetCtx, pt, label, color) {
+            targetCtx.save();
+            // Halo táctil semitransparente
+            targetCtx.beginPath();
+            targetCtx.arc(pt.x, pt.y, 18, 0, Math.PI * 2);
+            targetCtx.fillStyle = 'rgba(15, 23, 42, 0.55)';
+            targetCtx.fill();
+            targetCtx.lineWidth = 2;
+            targetCtx.strokeStyle = color;
+            targetCtx.stroke();
+
+            // Punto central sólido
+            targetCtx.beginPath();
+            targetCtx.arc(pt.x, pt.y, 7, 0, Math.PI * 2);
+            targetCtx.fillStyle = color;
+            targetCtx.fill();
+
+            // Letra del vértice (A, B o C)
+            targetCtx.font = '800 12px sans-serif';
+            targetCtx.fillStyle = '#ffffff';
+            targetCtx.textAlign = 'center';
+            targetCtx.textBaseline = 'middle';
+            targetCtx.fillText(label, pt.x, pt.y - 26);
+            targetCtx.restore();
+        }
+
+        function drawAngleBadge(targetCtx, text, x, y, bgColor, textColor) {
+            targetCtx.save();
+            targetCtx.font = '800 13px sans-serif';
+            const padX = 9;
+            const w = targetCtx.measureText(text).width + padX * 2;
+            const h = 24;
+            const rx = x - w / 2;
+            const ry = y - h / 2;
+
+            targetCtx.shadowColor = 'rgba(0, 0, 0, 0.7)';
+            targetCtx.shadowBlur = 6;
+            targetCtx.fillStyle = bgColor;
+            targetCtx.beginPath();
+            targetCtx.roundRect(rx, ry, w, h, 8);
+            targetCtx.fill();
+
+            targetCtx.shadowBlur = 0;
+            targetCtx.fillStyle = textColor;
+            targetCtx.textAlign = 'center';
+            targetCtx.textBaseline = 'middle';
+            targetCtx.fillText(text, x, y + 1);
+            targetCtx.restore();
+        }
+
+        function lerpPoint(p1, p2, t) {
+            return {
+                x: p1.x + (p2.x - p1.x) * t,
+                y: p1.y + (p2.y - p1.y) * t
+            };
+        }
+
+        // --- 7. CAPTURA Y DESCARGA DE EVIDENCIA PNG ---
+        function drawInstitutionalShieldOnCanvas(targetCtx, x, y, width, height) {
+            // Dibuja el escudo vectorial del Liceo JTM - Río Negro directamente sobre el canvas de exportación
+            const sx = width / 200;
+            const sy = height / 230;
+            targetCtx.save();
+            targetCtx.translate(x, y);
+            targetCtx.scale(sx, sy);
+
+            // Escudo exterior blanco con borde celeste
+            targetCtx.beginPath();
+            targetCtx.moveTo(100, 12);
+            targetCtx.lineTo(182, 46);
+            targetCtx.lineTo(182, 126);
+            targetCtx.bezierCurveTo(182, 174, 144, 202, 100, 220);
+            targetCtx.bezierCurveTo(56, 202, 18, 174, 18, 126);
+            targetCtx.lineTo(18, 46);
+            targetCtx.closePath();
+            targetCtx.fillStyle = '#ffffff';
+            targetCtx.fill();
+            targetCtx.lineWidth = 5;
+            targetCtx.strokeStyle = '#3898ec';
+            targetCtx.stroke();
+
+            // Texto rojo LICEO
+            targetCtx.fillStyle = '#b91c1c';
+            targetCtx.font = 'italic 800 18px Arial, sans-serif';
+            targetCtx.textAlign = 'center';
+            targetCtx.fillText('LICEO', 100, 55);
+
+            // Letra J (Azul marino)
+            targetCtx.fillStyle = '#10367d';
+            targetCtx.beginPath();
+            targetCtx.moveTo(36, 62);
+            targetCtx.lineTo(76, 62);
+            targetCtx.lineTo(76, 142);
+            targetCtx.bezierCurveTo(76, 164, 62, 175, 46, 175);
+            targetCtx.bezierCurveTo(33, 175, 26, 166, 26, 154);
+            targetCtx.lineTo(26, 144);
+            targetCtx.lineTo(44, 144);
+            targetCtx.lineTo(44, 152);
+            targetCtx.bezierCurveTo(44, 157, 46, 159, 50, 159);
+            targetCtx.bezierCurveTo(54, 159, 56, 155, 56, 145);
+            targetCtx.lineTo(56, 78);
+            targetCtx.lineTo(36, 78);
+            targetCtx.closePath();
+            targetCtx.fill();
+
+            // Letra T (Celeste)
+            targetCtx.fillStyle = '#3898ec';
+            targetCtx.beginPath();
+            targetCtx.moveTo(79, 62);
+            targetCtx.lineTo(121, 62);
+            targetCtx.lineTo(121, 79);
+            targetCtx.lineTo(109, 79);
+            targetCtx.lineTo(109, 176);
+            targetCtx.lineTo(100, 183);
+            targetCtx.lineTo(91, 176);
+            targetCtx.lineTo(91, 79);
+            targetCtx.lineTo(79, 79);
+            targetCtx.closePath();
+            targetCtx.fill();
+
+            // Letra M (Azul marino)
+            targetCtx.fillStyle = '#10367d';
+            targetCtx.beginPath();
+            targetCtx.moveTo(113, 84);
+            targetCtx.lineTo(129, 84);
+            targetCtx.lineTo(143, 108);
+            targetCtx.lineTo(160, 62);
+            targetCtx.lineTo(174, 62);
+            targetCtx.lineTo(174, 156);
+            targetCtx.lineTo(157, 172);
+            targetCtx.lineTo(157, 104);
+            targetCtx.lineTo(143, 134);
+            targetCtx.lineTo(128, 108);
+            targetCtx.lineTo(128, 162);
+            targetCtx.lineTo(113, 174);
+            targetCtx.closePath();
+            targetCtx.fill();
+
+            // Texto inferior Río Negro
+            targetCtx.fillStyle = '#10367d';
+            targetCtx.font = '900 15px Arial, sans-serif';
+            targetCtx.textAlign = 'center';
+            targetCtx.fillText('Río Negro', 100, 198);
+
+            targetCtx.restore();
+        }
+
+        function captureEvidencePNG() {
+            const w = canvas.width;
+            const h = canvas.height;
+            const offCanvas = document.createElement('canvas');
+            offCanvas.width = w;
+            offCanvas.height = h;
+            const offCtx = offCanvas.getContext('2d');
+
+            // 1. Dibujar el fondo (frame de video real o fondo simulado)
+            if (!state.isSimulation && videoEl.readyState >= 2) {
+                // Ajustar proporción object-fit: cover del video
+                const vw = videoEl.videoWidth;
+                const vh = videoEl.videoHeight;
+                const scale = Math.max(w / vw, h / vh);
+                const drawW = vw * scale;
+                const drawH = vh * scale;
+                const offsetX = (w - drawW) / 2;
+                const offsetY = (h - drawH) / 2;
+                offCtx.drawImage(videoEl, offsetX, offsetY, drawW, drawH);
+            }
+
+            // 2. Dibujar la capa geométrica sin la mira central
+            drawGeometryScene(offCtx, w, h, false);
+
+            // 3. Añadir sello pedagógico inferior con escudo del Liceo JTM, los 3 ángulos y marca de tiempo
+            const now = new Date();
+            const timestamp = now.toLocaleString('es-CL', { dateStyle: 'short', timeStyle: 'short' });
+            const bannerH = 62;
+            offCtx.fillStyle = 'rgba(9, 13, 22, 0.9)';
+            offCtx.fillRect(0, h - bannerH, w, bannerH);
+
+            // Dibujar escudo institucional en el sello inferior izquierdo
+            drawInstitutionalShieldOnCanvas(offCtx, 12, h - bannerH + 7, 42, 48);
+
+            offCtx.fillStyle = '#f8fafc';
+            offCtx.font = '700 13px sans-serif';
+            offCtx.textAlign = 'left';
+            const summaryText = (state.A && state.B && state.C)
+                ? `α = ${state.alphaDeg.toFixed(1)}°  |  Recto = 90.0°  |  β = ${state.betaDeg.toFixed(1)}°`
+                : 'Visor Geométrico de Ángulos AR';
+            offCtx.fillText(summaryText, 64, h - 35);
+
+            offCtx.fillStyle = '#94a3b8';
+            offCtx.font = '500 11px sans-serif';
+            offCtx.fillText(`Liceo JTM - Río Negro  •  ${timestamp}`, 64, h - 15);
+
+            // Iniciales RAFP muy pequeñas y sutiles en la esquina inferior derecha de la evidencia
+            offCtx.fillStyle = 'rgba(148, 163, 184, 0.35)';
+            offCtx.font = '600 9px sans-serif';
+            offCtx.textAlign = 'right';
+            offCtx.fillText('RAFP', w - 10, h - 8);
+
+            // 4. Descargar PNG automáticamente
+            const link = document.createElement('a');
+            const fileStamp = now.toISOString().replace(/[:.]/g, '-').slice(0, 19);
+            link.download = `evidencia-angulos-jtm-${fileStamp}.png`;
+            link.href = offCanvas.toDataURL('image/png');
+            link.click();
+
+            showToast('📸 Evidencia PNG descargada');
+        }
+
+        function showToast(msg) {
+            toastEl.textContent = msg;
+            toastEl.classList.add('show');
+            setTimeout(() => toastEl.classList.remove('show'), 2400);
+        }
+
+        // --- 8. EVENTOS DE BOTONES ---
+        btnStartAR.addEventListener('click', initARMode);
+        btnStartSim.addEventListener('click', initSimulationMode);
+        btnBack.addEventListener('click', exitWorkspace);
+
+        btnPlaceCenter.addEventListener('click', () => {
+            placeNextVertex({ x: canvas.width / 2, y: canvas.height / 2 });
+        });
+
+        btnReset.addEventListener('click', resetVertices);
+        btnCapture.addEventListener('click', captureEvidencePNG);
+
+        // Alternar alineación de base (Geometría Libre vs Base Horizonte con Sensor)
+        btnModeTouch.addEventListener('click', () => {
+            state.horizonAlign = false;
+            btnModeTouch.classList.add('active');
+            btnModeSensor.classList.remove('active');
+        });
+
+        btnModeSensor.addEventListener('click', () => {
+            state.horizonAlign = true;
+            btnModeSensor.classList.add('active');
+            btnModeTouch.classList.remove('active');
+        });
+
+        // Deslizador en Modo Simulación
+        simSlider.addEventListener('input', (e) => {
+            state.sensorRollDeg = parseFloat(e.target.value);
+            simAngleReadout.textContent = `${state.sensorRollDeg.toFixed(1)}°`;
+        });
+    </script>
+</body>
+</html>
